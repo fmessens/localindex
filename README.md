@@ -17,7 +17,7 @@ After activating the indexapp environment you can start the flask API backend fr
 ```
 python start_backend.py
 ```
-The frontend should be started from a seperate commend prompt. If you want to use the GPT answers for your query please specify the OPENAI_API_KEY env variable.\
+The frontend should be started from a separate commend prompt. If you want to use the GPT answers for your query please specify the OPENAI_API_KEY env variable.\
 To startup activate the indexapp env and run the script:
 ```
 python start_frontend.py

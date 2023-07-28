@@ -1,0 +1,17 @@
+{% extends "layout.jinja2" %}
+
+{% block content %}
+<div class="card">
+  <img src="{{ url_for('static', filename='img/logo.png') }}" class="logo" />
+  <h1 class="site-title">{{ title }}</h1>
+  <p class="subtitle">Demo</p>
+  <a href="/searchapp/" class="dash-link" target="_blank">
+    <span>Search app</span>
+    <i class="fas fa-arrow-right"></i>
+  </a>
+  <a href="/filetable/" class="dash-link" target="_blank">
+    <span>Files select</span>
+    <i class="fas fa-arrow-right"></i>
+  </a>
+</div>
+{% endblock %}

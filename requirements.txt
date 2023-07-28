@@ -1,0 +1,17 @@
+torch==1.13
+transformers
+datasets
+faiss-cpu
+flask
+flask-assets
+plotly
+dash
+cssmin
+python-dotenv
+numpy
+pandas
+panel
+pypdf2
+sentencepiece
+protobuf==3.20
+openai

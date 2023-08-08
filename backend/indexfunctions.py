@@ -14,6 +14,7 @@ from settings import (indexing_db, model_ckpt, embedding_location,
 
 
 def create_flecontext(file_path):
+    """Convert file path to add to text string"""
     flecontxt = (file_path.replace('C:/', '')
                  .replace('/', ' ').replace('\\', ' '))
     return flecontxt
@@ -32,6 +33,7 @@ def pdf_lines_text(file_path, window, step):
         pd.DataFrame: dataframe with text chunks, 
             start and end line, page and token index
     """
+    # put all the text lines of a pdf file in dataframe
     fullseq = []
     linetotal = 0
     with open(file_path, "rb") as file:
@@ -55,17 +57,24 @@ def pdf_lines_text(file_path, window, step):
             tokendf['page'] = page_number
             fullseq.append(tokendf)
     fulldf = pd.concat(fullseq).reset_index(drop=True)
+    # get the tokens, pages, lines and index into a list
     tokenseq = fulldf.token.tolist()
     pageseq = fulldf.page.tolist()
     lineseq = fulldf.line.tolist()
     idx = fulldf.index.tolist()
+    # add the file path to the text in order to give extra context
     flecontxt = create_flecontext(file_path)
+    # adapt the window size to account for the flecontxt
     window = window-len(flecontxt.split())
+    # total length of the text
     seqlen = len(tokenseq)
+    # get chunks of text based on window and step size
     pdfchunks = [' '.join(tokenseq[i:i+window])
                  for i in range(0, seqlen, step)]
+    # add flecontxt to the chunks
     pdfchunks2 = [flecontxt + ':\n ' + x
                   for x in pdfchunks]
+    # get the start and end lines, pages and index of the chunks
     startpages = [pageseq[i] for i in
                   range(0, seqlen, step)]
     startlines = [lineseq[i] for i in
@@ -81,6 +90,7 @@ def pdf_lines_text(file_path, window, step):
     endidx = [idx[-1] if i+window > seqlen
               else idx[i+window] for i in
               range(0, seqlen, step)]
+    # put all this info in a dataframe
     pdfchunksdf = pd.DataFrame({'text': pdfchunks2,
                                 'startlines': startlines,
                                 'startpages': startpages,
@@ -88,10 +98,24 @@ def pdf_lines_text(file_path, window, step):
                                 'endlines': endlines,
                                 'endpages': endpages,
                                 'endidx': endidx})
+    # return the dataframe
     return pdfchunksdf
 
 
 def index_file(fle, window, step):
+    """index a file to embedding database
+
+    Args:
+        fle (str): file path
+        window (int): window size of text chunks
+        step (int): step size of text chunks
+
+    Raises:
+        ValueError: If file type not supported
+
+    Returns:
+        Dataset: Embeddings dataset (huggingface datasets)
+    """
     ftype = fle.split('.')[-1]
     if ftype == 'pdf':
         chunks = pdf_lines_text(fle, window, step)
@@ -108,6 +132,8 @@ def index_file(fle, window, step):
 
 
 class Embedder():
+    """Class for embedding text using a transformer model
+    """
     def __init__(self, model_ckpt):
         self.tokenizer = AutoTokenizer.from_pretrained(model_ckpt)
         self.model = AutoModel.from_pretrained(model_ckpt)
@@ -125,20 +151,33 @@ class Embedder():
 
 
 def index_new_files():
+    """index new files in the indexing database
+
+    Returns:
+        dict: progress of indexing
+    """
+    # connect to sqlite db
     conn = sqlite3.connect(indexing_db)
+    # get all the tables with 'data_' in the name
     all_submits = pd.read_sql("SELECT name FROM sqlite_master", con=conn)
     all_submitss = all_submits[all_submits['name'].str.contains('data_')]
+    # take the last version of the table
     all_submitss = all_submitss.sort_values('name').reset_index(drop=True)
     last_submit = all_submitss['name'].iloc[-1]
+    # read this table into a dataframe
     filesdf = pd.read_sql(f"SELECT * FROM {last_submit}",
                           con=conn)
+    # if there is not yet a table called 'files_embedded' create it
     if 'files_embedded' not in all_submits['name'].tolist():
         (pd.DataFrame({'file': []})
          .to_sql('files_embedded', con=conn,
                  if_exists='replace'))
+    # read the table 'files_embedded' into a dataframe
     filesemb = pd.read_sql(f"SELECT * FROM files_embedded",
                            con=conn)
+    # filter dataframe to only include files that are not yet embedded
     filesdfsel = filesdf[~filesdf['path'].isin(filesemb['file'])]
+    # loop over the files and embed them
     for file in filesdfsel.path:
         print(file)
         filesprogress = {}
@@ -159,6 +198,8 @@ def index_new_files():
 
 
 class QueryIndex:
+    """a class for querying the embedding dataset
+    """
     def __init__(self):
         if not os.path.exists(embedding_location):
             usefile = 'data/placeholder.json'
@@ -169,6 +210,14 @@ class QueryIndex:
         self.embedder = Embedder(model_ckpt)
 
     def query(self, query):
+        """perform query on embedding dataset
+
+        Args:
+            query (str): the query
+
+        Returns:
+            Tuple[List[str], List[float]]: text samples and score
+        """
         query_embedding = (self.embedder
                            .get_embeddings([query])
                            .detach().numpy())
@@ -182,6 +231,14 @@ class QueryIndex:
 
     @staticmethod
     def cluster_texts(samples):
+        """Cluster text samples
+
+        Args:
+            samples (List[dict]): List of dicts with keys 'file', 'startidx'
+
+        Returns:
+            List[dict]: List of dicts with keys 'file', 'startidx', 'endidx'
+        """
         samples = pd.DataFrame(samples)
         samples = (samples.sort_values(['file', 'startidx'])
                    .reset_index(drop=True))
@@ -201,6 +258,14 @@ class QueryIndex:
 
     @staticmethod
     def cluster_pages(samples):
+        """Cluster pages
+
+        Args:
+            samples (List[dict]): List of dicts with keys 'file', 'startpages'
+
+        Returns:
+            pd.DataFrame: dataframe with columns 'page', 'file'
+        """
         samples = pd.DataFrame(samples)
         pages = samples['startpages'].tolist()
         files = samples['file'].tolist()
@@ -213,6 +278,14 @@ class QueryIndex:
         return pagefiles
 
     def processed_query(self, query):
+        """Perform a query and process the results
+
+        Args:
+            query (str): query
+
+        Returns:
+            Tuple[List[dict]]: texts, pagefiles, scores
+        """
         samples, scores = self.query(query)
         texts = self.cluster_texts(samples)
         pagefiles = self.cluster_pages(samples)
@@ -220,6 +293,8 @@ class QueryIndex:
 
 
 class Summarizer:
+    """a class for summarizing text with huggingface transformers
+    """
     def __init__(self):
         self.tokenizer = AutoTokenizer.from_pretrained(model_summ)
         self.model = AutoModelWithLMHead.from_pretrained(model_summ)

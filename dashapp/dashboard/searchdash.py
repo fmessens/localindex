@@ -12,6 +12,14 @@ openai.api_key = os.environ.get('OPENAI_API_KEY', 'no-key')
 
 
 def init_callback(dash_app):
+    """initialize callbacks for the dash app
+
+    Args:
+        dash_app (dash.Dash): dash app
+
+    Returns:
+        None: state functions in the dash app
+    """
     @dash_app.callback(
         [Output('full-texts', 'children'),
          Output('pdf-viz', 'children')],
@@ -76,7 +84,14 @@ def init_callback(dash_app):
 
 
 def init_search(server):
-    """Create a Plotly Dash dashboard."""
+    """Create a Plotly Dash dashboard.
+
+    Args:
+        server (Flask): Flask server
+
+    Returns:
+        Dash.dash.server: Dash application server
+    """
     dash_app = dash.Dash(
         server=server,
         routes_pathname_prefix="/searchapp/",

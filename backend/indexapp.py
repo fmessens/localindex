@@ -7,17 +7,31 @@ from backend.indexfunctions import (index_new_files,
 
 
 def create_dbapp():
+    """Create a backend Flask application.
+
+    Returns:
+        Flask.app: Flask application
+    """
     app = Flask(__name__)
     Summ = Summarizer()
 
     @app.route('/indexnew')
     def indexnew():
+        """Index new files.
+
+        Returns:
+            dict: status of indexing
+        """
         fileprogr = index_new_files()
-        Qidx = QueryIndex()
         return fileprogr
 
     @app.route('/queryprocessed', methods=['GET'])
     def queryprocessed():
+        """Query index and preprocess results.
+
+        Returns:
+            dict: jsonified results of texts, files and pages
+        """
         Qidx = QueryIndex()
         qu = request.args.get('q', None)
         q_out = Qidx.processed_query(qu)
@@ -27,6 +41,11 @@ def create_dbapp():
     
     @app.route('/querysummary', methods=['GET'])
     def querysummary():
+        """Query index, preprocess and summarize results.
+
+        Returns:
+            dict: jsonified results of texts, text summaries, files and pages
+        """
         Qidx = QueryIndex()
         qu = request.args.get('q', None)
         q_out = Qidx.processed_query(qu)
@@ -38,6 +57,11 @@ def create_dbapp():
     
     @app.route('/query', methods=['GET'])
     def query():
+        """Query the index.
+
+        Returns:
+            dict: relevant samples
+        """
         Qidx = QueryIndex()
         qu = request.args.get('q', None)
         samples, scores = Qidx.query(qu)
@@ -46,12 +70,16 @@ def create_dbapp():
 
     @app.route('/showPDFs')
     def send_pdf():
+        """Encode and send the pdf file of the path 
+            over the request response.
+
+        Returns:
+            dict: response data
+        """
         pdf_path = request.args.get('path', None)
-        print(pdf_path)
         pdf = pdf_path.split('/')[-1]
         path = pdf_path.replace(pdf, '')
         send = send_from_directory(path, pdf)
-        print(send)
         return send
 
     return app

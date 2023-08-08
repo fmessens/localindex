@@ -9,6 +9,15 @@ from settings import dbapp_host, dbapp_port, file_ext, indexing_db
 
 
 def send_get_request(url):
+    """Send request to url with try except block.
+
+    Args:
+        url (str): url
+
+    Returns:
+        (None, dict): response data if 
+            request is successful, else None
+    """
     try:
         response = requests.get(url)
         response_data = response.json()
@@ -19,6 +28,14 @@ def send_get_request(url):
 
 
 def send_query_request(query):
+    """Send query request to dbapp.
+
+    Args:
+        query (str): query to encode
+
+    Returns:
+        dict: response data
+    """
     base_url = f"http://{dbapp_host}:{dbapp_port}/queryprocessed"
     encoded_q = requests.utils.quote(query)
     url = f"{base_url}?q={encoded_q}"
@@ -26,6 +43,14 @@ def send_query_request(query):
 
 
 def encode_pdf_request(pdf_path):
+    """Get encoded pdf path to send in request.
+
+    Args:
+        pdf_path (str): pdf path
+
+    Returns:
+        str: query string
+    """
     pdf_path = pdf_path.replace('\\', '/')
     base_url = f"http://{dbapp_host}:{dbapp_port}/showPDFs"
     encoded_path = requests.utils.quote(pdf_path)
@@ -33,7 +58,14 @@ def encode_pdf_request(pdf_path):
 
 
 def subdirs_table(path):
-    """Returns a pandas dataframe with the filetree of the path."""
+    """Returns a pandas dataframe with the filetree of the path.
+
+    Args:
+        path (str): path to directory
+
+    Returns:
+        pd.DataFrame: filetree in a dataframe
+    """
     df = pd.DataFrame(columns=['name', 'path', 'type'])
     for root, dirs, files in os.walk(path):
         for name in files:
@@ -47,7 +79,12 @@ def subdirs_table(path):
 
 
 def save_table(lsdict, idx):
-    """Saves the table to a db."""
+    """Saves the table to a SQL db.
+
+    Args:
+        lsdict (List[Dict]): list of dictionaries representing a dataframe
+        idx (int): the index to save
+    """
     df = pd.DataFrame(lsdict).iloc[idx]
     conn = sqlite3.connect(indexing_db)
     now = datetime.now()
@@ -66,6 +103,14 @@ operators = [['ge ', '>='],
 
 
 def split_filter_part(filter_part):
+    """Split filter part into name, operator and value.
+
+    Args:
+        filter_part (str): string with filter expression
+
+    Returns:
+        Tuple[str]: list with name, operator and value
+    """
     for operator_type in operators:
         for operator in operator_type:
             if operator in filter_part:
@@ -86,4 +131,4 @@ def split_filter_part(filter_part):
                 # but we don't want these later
                 return name, operator_type[0].strip(), value
 
-    return [None] * 3
+    return tuple([None] * 3)

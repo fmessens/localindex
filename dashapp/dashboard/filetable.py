@@ -11,6 +11,14 @@ from settings import root_path, dbapp_host, dbapp_port
 
 
 def init_callback(dash_app):
+    """initialize callbacks for the dash app
+
+    Args:
+        dash_app (dash.Dash): dash app
+
+    Returns:
+        None: state functions in the dash app
+    """
     @dash_app.callback(
         Output('table-filtering-be', "data"),
         Input('table-filtering-be', "filter_query"),
@@ -79,7 +87,14 @@ def init_callback(dash_app):
 
 
 def init_table(server):
-    """Create a Plotly Dash dashboard."""
+    """Create a Plotly Dash dashboard.
+
+    Args:
+        server (Flask): Flask server
+
+    Returns:
+        Dash.dash.server: Dash application server
+    """
     dash_app = dash.Dash(
         server=server,
         routes_pathname_prefix="/filetable/",
